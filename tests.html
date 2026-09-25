@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Tests</title>
+<style>
+  body { font-family: 'SF Mono', Menlo, Consolas, monospace; padding: 20px; max-width: 860px; margin: 0 auto; background: #fafafa; }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .phase { font-size: 13px; color: #666; margin-bottom: 16px; }
+  .summary { font-size: 15px; margin: 16px 0; padding: 12px 16px; border-radius: 8px; }
+  .summary.pass { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+  .summary.fail { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
+  .test { padding: 8px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+  .test.pass { color: #2e7d32; }
+  .test.fail { color: #c62828; font-weight: bold; }
+  .test .err { font-size: 12px; color: #888; margin-top: 3px; font-weight: normal; }
+  #test-dom { position: absolute; left: -9999px; width: 1200px; }
+</style>
+</head>
+<body>
+<h1>个人日程管理系统 · 测试</h1>
+<div class="phase" id="phase-label">P1-P6 全部单元测试</div>
+<div id="summary" class="summary"></div>
+<div id="results"></div>
+
+<div id="test-dom">
+<header class="topbar">
+  <div class="brand">我的日程</div>
+  <nav class="top-nav">
+    <button class="nav-btn active" data-tab="home">首页</button>
+    <button class="nav-btn" data-tab="timetable">课表</button>
+    <button class="nav-btn" data-tab="todo">日程待办</button>
+  </nav>
+</header>
+<main>
+  <section id="view-home" class="view active">
+    <div class="home-head">
+      <div>
+        <div class="date-big" id="home-date"></div>
+        <div class="date-sub" id="home-sub"></div>
+      </div>
+      <div class="week-badge" id="home-week"></div>
+    </div>
+    <div id="home-banner"></div>
+    <h2 class="section-title">今日课程</h2>
+    <div id="home-courses" class="card-list"></div>
+    <h2 class="section-title">今日待办</h2>
+    <div id="home-todos" class="card-list"></div>
+  </section>
+  <section id="view-timetable" class="view">
+    <div class="tt-toolbar">
+      <button class="icon-btn" id="tt-prev" aria-label="上一周">‹</button>
+      <div class="tt-label" id="tt-label"></div>
+      <button class="icon-btn" id="tt-next" aria-label="下一周">›</button>
+      <button class="ghost-btn" id="tt-today">本周</button>
+    </div>
+    <div class="tt-scroll">
+      <div class="tt-grid" id="tt-grid"></div>
+    </div>
+    <p class="tt-hint">提示：课表按校历周次自动过滤，节假日不显示课程。</p>
+  </section>
+  <section id="view-todo" class="view">
+    <div class="todo-toolbar">
+      <h2 class="section-title no-margin">全部日程</h2>
+      <button class="primary-btn" id="todo-add">＋ 新建待办</button>
+    </div>
+    <div id="todo-list" class="card-list"></div>
+  </section>
+</main>
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-tab="home">首页</button>
+  <button class="nav-btn" data-tab="timetable">课表</button>
+  <button class="nav-btn" data-tab="todo">待办</button>
+</nav>
+<div class="modal-mask hidden" id="modal-mask">
+  <div class="modal">
+    <h3 id="modal-title">新建待办</h3>
+    <form id="todo-form">
+      <label>标题 *
+        <input type="text" id="f-title" maxlength="60" required placeholder="例如：法语听写复习">
+      </label>
+      <div class="form-row">
+        <label>日期 *
+          <input type="date" id="f-date" required>
+        </label>
+        <label>时间
+          <input type="time" id="f-time">
+        </label>
+      </div>
+      <label>地点
+        <input type="text" id="f-loc" maxlength="40" placeholder="可选">
+      </label>
+      <label>备注
+        <textarea id="f-note" rows="3" maxlength="200" placeholder="可选"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="danger-btn hidden" id="f-delete">删除</button>
+        <span class="spacer"></span>
+        <button type="button" class="ghost-btn" id="f-cancel">取消</button>
+        <button type="submit" class="primary-btn">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+<script>
+const _results = [];
+function test(name, fn) {
+  try { fn(); _results.push({ name, pass: true }); }
+  catch (e) { _results.push({ name, pass: false, error: e.message }); }
+}
+function assertEq(a, b, msg) {
+  const sa = JSON.stringify(a), sb = JSON.stringify(b);
+  if (sa !== sb) throw new Error((msg || 'assertEq') + ': 期望 ' + sb + '，得到 ' + sa);
+}
+function assert(cond, msg) { if (!cond) throw new Error(msg || '断言失败'); }
+
+// ===== P1: Date & Data Utilities =====
+
+test('parseDate 解析 2026-09-25', () => {
+  const d = parseDate('2026-09-25');
+  assertEq(d.getFullYear(), 2026);
+  assertEq(d.getMonth(), 8);
+  assertEq(d.getDate(), 25);
+});
+
+test('fmtDate 格式化', () => {
+  assertEq(fmtDate(parseDate('2026-09-25')), '2026-09-25');
+  assertEq(fmtDate(parseDate('2027-01-07')), '2027-01-07');
+  assertEq(fmtDate(parseDate('2026-10-01')), '2026-10-01');
+});
+
+test('weekOfDate: 2026-09-07 = 第1周', () => {
+  assertEq(weekOfDate(parseDate('2026-09-07')), 1);
+});
+
+test('weekOfDate: 2026-09-25 = 第3周', () => {
+  assertEq(weekOfDate(parseDate('2026-09-25')), 3);
+});
+
+test('weekOfDate: 2027-01-17 = 第19周', () => {
+  assertEq(weekOfDate(parseDate('2027-01-17')), 19);
+});
+
+test('weekOfDate: 学期前(09-06) 返回 null', () => {
+  assertEq(weekOfDate(parseDate('2026-09-06')), null);
+});
+
+test('weekOfDate: 学期后(01-18) 返回 null', () => {
+  assertEq(weekOfDate(parseDate('2027-01-18')), null);
+});
+
+test('weekdayOf: 2026-09-25 = 周五(5)', () => {
+  assertEq(weekdayOf(parseDate('2026-09-25')), 5);
+});
+
+test('weekdayOf: 2026-09-28 = 周一(1)', () => {
+  assertEq(weekdayOf(parseDate('2026-09-28')), 1);
+});
+
+test('weekdayOf: 2026-10-04 = 周日(7)', () => {
+  assertEq(weekdayOf(parseDate('2026-10-04')), 7);
+});
+
+test('isHoliday: 2026-09-25 = 中秋节', () => {
+  assertEq(isHoliday(parseDate('2026-09-25')), '中秋节');
+});
+
+test('isHoliday: 2026-10-01 = 国庆节', () => {
+  assertEq(isHoliday(parseDate('2026-10-01')), '国庆节');
+});
+
+test('isHoliday: 2026-10-07 = 国庆节', () => {
+  assertEq(isHoliday(parseDate('2026-10-07')), '国庆节');
+});
+
+test('isHoliday: 2026-09-28 = null', () => {
+  assertEq(isHoliday(parseDate('2026-09-28')), null);
+});
+
+test('isExamWeek: 18=true, 19=true, 17=false', () => {
+  assert(isExamWeek(18));
+  assert(isExamWeek(19));
+  assert(!isExamWeek(17));
+});
+
+test('periodRange(1,1) = 08:00-08:45', () => {
+  assertEq(periodRange(1, 1), '08:00-08:45');
+});
+
+test('periodRange(1,2) = 08:00-09:35', () => {
+  assertEq(periodRange(1, 2), '08:00-09:35');
+});
+
+test('periodRange(6,9) = 14:00-17:25', () => {
+  assertEq(periodRange(6, 9), '14:00-17:25');
+});
+
+test('periodRange(11,12) = 19:00-20:35', () => {
+  assertEq(periodRange(11, 12), '19:00-20:35');
+});
+
+test('coursesOn(2026-09-25) 中秋无课', () => {
+  assertEq(coursesOn(parseDate('2026-09-25')).length, 0);
+});
+
+test('coursesOn(2026-09-28) 周一第3周有3门课', () => {
+  const cs = coursesOn(parseDate('2026-09-28'));
+  assertEq(cs.length, 3);
+});
+
+test('周一法语实训仅第1节', () => {
+  const cs = coursesOn(parseDate('2026-09-28'));
+  const prac = cs.find(c => c.name === '综合法语实训(1)');
+  assert(prac, '应找到法语实训');
+  assertEq(prac.start, 1);
+  assertEq(prac.end, 1);
+});
+
+test('coursesOn(2026-10-01) 国庆无课', () => {
+  assertEq(coursesOn(parseDate('2026-10-01')).length, 0);
+});
+
+test('coursesOn(2026-10-05) 国庆假期中无课', () => {
+  assertEq(coursesOn(parseDate('2026-10-05')).length, 0);
+});
+
+test('coursesOn(2026-10-08) 假期后周四恢复上课', () => {
+  const cs = coursesOn(parseDate('2026-10-08'));
+  assertEq(cs.length, 2);
+});
+
+test('coursesOn(2026-11-12) 第10周周四仅1门(计算机已结课)', () => {
+  const cs = coursesOn(parseDate('2026-11-12'));
+  assertEq(cs.length, 1);
+  assert(cs[0].name.includes('综合法语'), '应为综合法语');
+  assertEq(cs[0].start, 11);
+  assertEq(cs[0].end, 12);
+});
+
+test('coursesOn(2026-12-22) 第16周周二3门(工程化学已结课)', () => {
+  const cs = coursesOn(parseDate('2026-12-22'));
+  assertEq(cs.length, 3);
+  assert(!cs.some(c => c.name.includes('工程化学')), '工程化学应已结课');
+  const names = cs.map(c => c.name).sort();
+  assertEq(names, ['基础英语(1)', '数学基础', '综合法语(1)'].sort());
+});
+
+test('courseColor 同名课程颜色一致', () => {
+  const c1 = courseColor('综合法语(1)');
+  const c2 = courseColor('综合法语(1)');
+  assertEq(c1.bg, c2.bg);
+  assertEq(c1.border, c2.border);
+});
+
+test('courseColor 不同课程颜色不同', () => {
+  const c1 = courseColor('综合法语实训(1)');
+  const c2 = courseColor('数学基础');
+  assert(c1.bg !== c2.bg, '不同课程应有不同颜色');
+});
+
+// ===== P2: Navigation =====
+
+test('initNav 绑定后点击切换 tab', () => {
+  initNav();
+  const btn = document.querySelector('.top-nav .nav-btn[data-tab="timetable"]');
+  btn.click();
+  assertEq(currentTab, 'timetable');
+  assert(document.getElementById('view-timetable').classList.contains('active'), 'timetable view 应 active');
+  assert(!document.getElementById('view-home').classList.contains('active'), 'home view 不应 active');
+  switchTab('home');
+});
+
+test('switchTab 同步高亮所有 nav-btn', () => {
+  switchTab('todo');
+  const allActive = document.querySelectorAll('.nav-btn.active');
+  allActive.forEach(b => assertEq(b.dataset.tab, 'todo'));
+  assertEq(allActive.length, 2, 'top + bottom 两个 btn 应 active');
+  switchTab('home');
+});
+
+test('switchTab 到 home 触发 renderHome', () => {
+  switchTab('home');
+  const dateEl = document.getElementById('home-date');
+  assert(dateEl.textContent.length > 0, 'home-date 应有内容');
+});
+
+// ===== P3: Todo Store =====
+
+test('loadTodos 初始为空数组', () => {
+  localStorage.removeItem(TODO_KEY);
+  assertEq(loadTodos().length, 0);
+});
+
+test('addTodo 添加并持久化', () => {
+  localStorage.removeItem(TODO_KEY);
+  const t = addTodo({ title: '测试待办', date: '2026-09-28', time: '09:00' });
+  assert(t.id, '应有 id');
+  assertEq(t.done, false);
+  assertEq(loadTodos().length, 1);
+  assertEq(loadTodos()[0].title, '测试待办');
+});
+
+test('updateTodo 修改字段', () => {
+  const list = loadTodos();
+  const id = list[0].id;
+  updateTodo(id, { title: '已修改' });
+  assertEq(loadTodos()[0].title, '已修改');
+});
+
+test('toggleTodo 切换完成状态', () => {
+  const list = loadTodos();
+  const id = list[0].id;
+  assertEq(list[0].done, false);
+  toggleTodo(id);
+  assertEq(loadTodos()[0].done, true);
+  toggleTodo(id);
+  assertEq(loadTodos()[0].done, false);
+});
+
+test('deleteTodo 删除条目', () => {
+  const list = loadTodos();
+  const id = list[0].id;
+  deleteTodo(id);
+  assertEq(loadTodos().length, 0);
+});
+
+test('addTodo 多条并按日期排序', () => {
+  localStorage.removeItem(TODO_KEY);
+  addTodo({ title: 'B', date: '2026-10-01' });
+  addTodo({ title: 'A', date: '2026-09-28' });
+  addTodo({ title: 'C', date: '2026-09-28', time: '08:00' });
+  const list = loadTodos();
+  assertEq(list.length, 3);
+});
+
+// ===== P3: Modal =====
+
+test('openModal 新建模式', () => {
+  openModal(null);
+  assertEq(document.getElementById('modal-title').textContent, '新建待办');
+  assertEq(document.getElementById('f-title').value, '');
+  assert(document.getElementById('f-delete').classList.contains('hidden'), '删除按钮应隐藏');
+  assert(!document.getElementById('modal-mask').classList.contains('hidden'), 'modal 应显示');
+  closeModal();
+});
+
+test('openModal 编辑模式', () => {
+  const t = loadTodos()[0];
+  openModal(t);
+  assertEq(document.getElementById('modal-title').textContent, '编辑待办');
+  assertEq(document.getElementById('f-title').value, t.title);
+  assert(!document.getElementById('f-delete').classList.contains('hidden'), '删除按钮应显示');
+  closeModal();
+});
+
+test('closeModal 隐藏 modal', () => {
+  openModal(null);
+  closeModal();
+  assert(document.getElementById('modal-mask').classList.contains('hidden'), 'modal 应隐藏');
+});
+
+test('collectForm 返回 null 当标题为空', () => {
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-date').value = '2026-09-28';
+  assertEq(collectForm(), null);
+});
+
+test('collectForm 返回数据当标题和日期都有', () => {
+  document.getElementById('f-title').value = '测试';
+  document.getElementById('f-date').value = '2026-09-28';
+  document.getElementById('f-time').value = '10:00';
+  document.getElementById('f-loc').value = '教室A';
+  document.getElementById('f-note').value = '备注内容';
+  const data = collectForm();
+  assertEq(data.title, '测试');
+  assertEq(data.date, '2026-09-28');
+  assertEq(data.time, '10:00');
+  assertEq(data.loc, '教室A');
+  assertEq(data.note, '备注内容');
+});
+
+// ===== P4: Home View =====
+
+test('renderHome 显示今日日期', () => {
+  renderHome();
+  const d = today();
+  const expected = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+  assertEq(document.getElementById('home-date').textContent, expected);
+});
+
+test('renderHome 显示周次', () => {
+  renderHome();
+  const w = weekOfDate(today());
+  const weekEl = document.getElementById('home-week');
+  if (w !== null) {
+    assert(weekEl.textContent.includes('第'), '应包含"第"');
+    assert(weekEl.textContent.includes('周'), '应包含"周"');
+  }
+});
+
+test('renderHomeCourses 显示今日课程或无课', () => {
+  renderHome();
+  const el = document.getElementById('home-courses');
+  assert(el.innerHTML.length > 0, 'courses 区域应有内容');
+});
+
+test('renderHomeTodos 显示今日待办或空状态', () => {
+  renderHome();
+  const el = document.getElementById('home-todos');
+  assert(el.innerHTML.length > 0, 'todos 区域应有内容');
+});
+
+// ===== P5: Timetable View =====
+
+test('renderTimetable 生成网格', () => {
+  switchTab('timetable');
+  const grid = document.getElementById('tt-grid');
+  assert(grid.innerHTML.length > 0, 'grid 应有内容');
+  const headers = grid.querySelectorAll('.tt-header');
+  assertEq(headers.length, 8, '7天 + 1空角 = 8 header cells');
+  const periods = grid.querySelectorAll('.tt-period');
+  assertEq(periods.length, 14, '应有14个节次列');
+  const cells = grid.querySelectorAll('.tt-cell');
+  assertEq(cells.length, 14 * 7, '应有14x7=98个课程格子');
+});
+
+test('renderTimetable 显示周次标签', () => {
+  const label = document.getElementById('tt-label').textContent;
+  assert(label.includes('第'), '标签应包含"第"');
+  assert(label.includes('周'), '标签应包含"周"');
+});
+
+test('课表课程块数量正确(第 3 周)', () => {
+  ttWeek = 3;
+  renderTimetable();
+  const blocks = document.querySelectorAll('#tt-grid .course-block');
+  assertEq(blocks.length, 12, '第3周周五是中秋节，应有12门课(13-1)');
+});
+
+test('课表课程块数量正确(第10周, 计算机和习概已结课)', () => {
+  ttWeek = 10;
+  renderTimetable();
+  const blocks = document.querySelectorAll('#tt-grid .course-block');
+  assertEq(blocks.length, 11, '第10周计算机+习概已结课, 应有11门');
+});
+
+test('课表课程块数量正确(第16周, 化学也结课)', () => {
+  ttWeek = 16;
+  renderTimetable();
+  const blocks = document.querySelectorAll('#tt-grid .course-block');
+  assertEq(blocks.length, 10, '第16周计算机+化学+习概已结课, 应有10门');
+});
+
+test('课表第1周无课(所有课从第2周开始)', () => {
+  ttWeek = 1;
+  renderTimetable();
+  const blocks = document.querySelectorAll('#tt-grid .course-block');
+  assertEq(blocks.length, 0, '第1周所有课未开始, 应有0门');
+});
+
+test('周导航 prev/next 切换', () => {
+  ttWeek = 5;
+  renderTimetable();
+  document.getElementById('tt-next').click();
+  assertEq(ttWeek, 6);
+  document.getElementById('tt-prev').click();
+  assertEq(ttWeek, 5);
+});
+
+test('周导航边界: 第1周不能前翻', () => {
+  ttWeek = 1;
+  renderTimetable();
+  assert(document.getElementById('tt-prev').disabled, 'prev 应 disabled');
+});
+
+test('周导航边界: 第19周不能后翻', () => {
+  ttWeek = 19;
+  renderTimetable();
+  assert(document.getElementById('tt-next').disabled, 'next 应 disabled');
+});
+
+// ===== P6: Todo List View =====
+
+test('renderTodoList 空状态', () => {
+  localStorage.removeItem(TODO_KEY);
+  switchTab('todo');
+  const el = document.getElementById('todo-list');
+  assert(el.textContent.includes('暂无待办'), '应显示空状态');
+});
+
+test('renderTodoList 显示待办条目', () => {
+  localStorage.removeItem(TODO_KEY);
+  addTodo({ title: '待办A', date: '2026-09-28' });
+  addTodo({ title: '待办B', date: '2026-09-29' });
+  renderTodoList();
+  const el = document.getElementById('todo-list');
+  assert(el.textContent.includes('待办A'), '应包含待办A');
+  assert(el.textContent.includes('待办B'), '应包含待办B');
+});
+
+test('renderTodoList 过期分组', () => {
+  localStorage.removeItem(TODO_KEY);
+  addTodo({ title: '过期事项', date: '2020-01-01' });
+  addTodo({ title: '未来事项', date: '2027-12-01' });
+  renderTodoList();
+  const el = document.getElementById('todo-list');
+  assert(el.textContent.includes('已过期'), '应有已过期分组');
+  assert(el.querySelector('.todo-group-header.overdue'), '过期组应有 overdue class');
+});
+
+test('groupLabel 今天/过期/日期', () => {
+  assertEq(groupLabel('已过期'), '⚠️ 已过期');
+  assertEq(groupLabel('今天'), '📌 今天');
+  const label = groupLabel('2026-09-28');
+  assert(label.includes('9月'), '应包含月份');
+  assert(label.includes('28日'), '应包含日期');
+});
+
+// ===== Cleanup =====
+localStorage.removeItem(TODO_KEY);
+
+// ===== Render Results =====
+const passed = _results.filter(r => r.pass).length;
+const total = _results.length;
+const allPass = passed === total;
+const sumEl = document.getElementById('summary');
+sumEl.className = 'summary ' + (allPass ? 'pass' : 'fail');
+sumEl.textContent = (allPass ? '✅ ' : '❌ ') + passed + '/' + total + ' 通过';
+document.getElementById('results').innerHTML = _results.map(r =>
+  '<div class="test ' + (r.pass ? 'pass' : 'fail') + '">' +
+  (r.pass ? '✓ ' : '✗ ') + r.name +
+  (r.error ? '<div class="err">' + r.error + '</div>' : '') +
+  '</div>'
+).join('');
+
+window.__TEST_DONE__ = true;
+window.__TEST_PASS__ = allPass;
+window.__TEST_PASSED__ = passed;
+window.__TEST_TOTAL__ = total;
+</script>
+</body>
+</html>
