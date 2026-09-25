@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>我的日程 · 2026秋季学期</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">我的日程</div>
+  <nav class="top-nav">
+    <button class="nav-btn active" data-tab="home">首页</button>
+    <button class="nav-btn" data-tab="timetable">课表</button>
+    <button class="nav-btn" data-tab="todo">日程待办</button>
+  </nav>
+</header>
+
+<main>
+  <section id="view-home" class="view active">
+    <div class="home-head">
+      <div>
+        <div class="date-big" id="home-date"></div>
+        <div class="date-sub" id="home-sub"></div>
+      </div>
+      <div class="week-badge" id="home-week"></div>
+    </div>
+    <div id="home-banner"></div>
+    <h2 class="section-title">今日课程</h2>
+    <div id="home-courses" class="card-list"></div>
+    <h2 class="section-title">今日待办</h2>
+    <div id="home-todos" class="card-list"></div>
+  </section>
+
+  <section id="view-timetable" class="view">
+    <div class="tt-toolbar">
+      <button class="icon-btn" id="tt-prev" aria-label="上一周">‹</button>
+      <div class="tt-label" id="tt-label"></div>
+      <button class="icon-btn" id="tt-next" aria-label="下一周">›</button>
+      <button class="ghost-btn" id="tt-today">本周</button>
+    </div>
+    <div class="tt-scroll">
+      <div class="tt-grid" id="tt-grid"></div>
+    </div>
+    <p class="tt-hint">提示：课表按校历周次自动过滤，节假日不显示课程。</p>
+  </section>
+
+  <section id="view-todo" class="view">
+    <div class="todo-toolbar">
+      <h2 class="section-title no-margin">全部日程</h2>
+      <button class="primary-btn" id="todo-add">＋ 新建待办</button>
+    </div>
+    <div id="todo-list" class="card-list"></div>
+  </section>
+</main>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-tab="home">首页</button>
+  <button class="nav-btn" data-tab="timetable">课表</button>
+  <button class="nav-btn" data-tab="todo">待办</button>
+</nav>
+
+<div class="modal-mask hidden" id="modal-mask">
+  <div class="modal">
+    <h3 id="modal-title">新建待办</h3>
+    <form id="todo-form">
+      <label>标题 *
+        <input type="text" id="f-title" maxlength="60" required placeholder="例如：法语听写复习">
+      </label>
+      <div class="form-row">
+        <label>日期 *
+          <input type="date" id="f-date" required>
+        </label>
+        <label>时间
+          <input type="time" id="f-time">
+        </label>
+      </div>
+      <label>地点
+        <input type="text" id="f-loc" maxlength="40" placeholder="可选">
+      </label>
+      <label>备注
+        <textarea id="f-note" rows="3" maxlength="200" placeholder="可选"></textarea>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="danger-btn hidden" id="f-delete">删除</button>
+        <span class="spacer"></span>
+        <button type="button" class="ghost-btn" id="f-cancel">取消</button>
+        <button type="submit" class="primary-btn">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
